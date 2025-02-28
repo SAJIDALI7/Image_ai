@@ -1,5 +1,9 @@
 from django.db import models
 
+
+# Initialize Firestore DB
+
+
 class GeneratedImage(models.Model):
     prompt = models.TextField()
     image = models.ImageField(upload_to='generated_images/')
@@ -8,3 +12,8 @@ class GeneratedImage(models.Model):
     
     def __str__(self):
         return f"Image for: {self.prompt[:10]}.."
+    
+
+
+
+

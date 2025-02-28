@@ -142,3 +142,9 @@ CORS_ALLOW_METHODS = (
 )
 
 LEONARDO_AI_API=os.getenv("LEONARDO_AI_API")
+
+import firebase_admin
+from firebase_admin import credentials
+
+cred = credentials.Certificate("/home/sajidali/image-generator-cba3b-firebase-adminsdk-fbsvc-65bc95bd33.json")
+firebase_admin.initialize_app(cred)

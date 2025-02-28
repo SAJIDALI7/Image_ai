@@ -3,6 +3,7 @@ import json
 import time
 import tempfile
 import os
+from django.http import JsonResponse
 from django.conf import settings
 from django.core.files import File
 from django.shortcuts import render
@@ -11,6 +12,25 @@ from rest_framework.response import Response
 from rest_framework import status
 from .models import GeneratedImage
 from .serializers import GeneratedImageSerializer, ImageGenerationSerializer
+from datetime import datetime
+
+
+from firebase_admin import firestore
+db = firestore.client()
+doc_ref = db.collection('GeneratedImage').document()
+class Load_models(APIView):
+    def get(self, request):
+        url = "https://cloud.leonardo.ai/api/rest/v1/platformModels"
+
+        headers = {
+            "accept": "application/json",
+            "authorization": f"Bearer {settings.LEONARDO_AI_API}"
+        }
+
+        res = requests.get(url, headers=headers)
+        return JsonResponse(res.json(), safe=False)
+
+
 
 class GenerateImageView(APIView):
     def download_image(self, url, file_path):
@@ -38,8 +58,7 @@ class GenerateImageView(APIView):
         if serializer.is_valid():
             prompt = serializer.validated_data['prompt']
             # negative_prompt = serializer.validated_data.get('negative_prompt', '')
-            model_id = serializer.validated_data.get('model_id', 'b24e16ff-06e3-43eb-8d33-4416c2d75876')  # Default model ID
-            
+            model_id = serializer.validated_data.get('model_id', 'b24e16ff-06e3-43eb-8d33-4416c2d75876')
             # API headers
             headers = {
                 "Authorization": f"Bearer {settings.LEONARDO_AI_API}",
@@ -56,7 +75,7 @@ class GenerateImageView(APIView):
             }
             
             # Debug the API URL and headers
-            print(f"API Key: {settings.LEONARDO_AI_API}")
+            # print(f"API Key: {settings.LEONARDO_AI_API}")
             print(f"Request data: {generation_data}")
             
             # Start generation request
@@ -67,8 +86,8 @@ class GenerateImageView(APIView):
                     data=json.dumps(generation_data)
                 )
                 
-                print(f"Generation response code: {response.status_code}")
-                print(f"Generation response: {response.text}")
+                # print(f"Generation response code: {response.status_code}")
+                # print(f"Generation response: {response.text}")
                 
                 response.raise_for_status()  # Raise exception for 4XX/5XX responses
             except requests.exceptions.RequestException as e:
@@ -151,19 +170,22 @@ class GenerateImageView(APIView):
                                 prompt=prompt,
                                 leonardo_id=generation_id
                             )
-                            
+                            doc_ref.set({
+                                'prompt': f'{prompt}',
+                                'leonardo_id': f'{generation_id}'
+                            })
                             with open(temp_file_path, 'rb') as f:
                                 generated_image.image.save(
                                     f"leonardo_{generation_id}.png", 
                                     File(f)
                                 )
                             generated_image.save()
-                            
+                            doc_ref.set({'image':f'{generated_image}', 'created_at': f'{datetime.now()}'})
                             # Clean up
                             os.remove(temp_file_path)
                             
                             # Return success
-                            serializer = GeneratedImageSerializer(generated_image, context={'request': request}, many=True)
+                            serializer = GeneratedImageSerializer(generated_image, context={'request': request})
                             return Response(serializer.data, status=status.HTTP_201_CREATED)
                             
                         except (IndexError, KeyError) as e:
@@ -172,8 +194,11 @@ class GenerateImageView(APIView):
                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
                             )
                         except Exception as e:
+                            print(f"Error processing image: {str(e)}")
+                            import traceback
+                            traceback.print_exc()
                             return Response(
-                                {"error": f"Error processing image: {str(e)}"},
+                                {"error": f"Error processing image: {str(e)}"}, 
                                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
                             )
                     elif generation_status == 'FAILED':
@@ -193,7 +218,7 @@ class GenerateImageView(APIView):
 
 class ListGeneratedImagesView(APIView):
     def get(self, request):
-        images = GeneratedImage.objects.all()
+        images = GeneratedImage.objects.all().order_by('-created_at')
         serializer = GeneratedImageSerializer(images,  many=True, context= 
         {'request': request})
         return Response(serializer.data)
