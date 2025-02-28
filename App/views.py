@@ -30,8 +30,6 @@ class Load_models(APIView):
         res = requests.get(url, headers=headers)
         return JsonResponse(res.json(), safe=False)
 
-
-
 class GenerateImageView(APIView):
     def download_image(self, url, file_path):
         """
