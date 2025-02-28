@@ -27,14 +27,7 @@ SECRET_KEY = 'django-insecure-ivlg7h7p-#qj$4v1ezfd#!wfx)w8folx971h1t3epbuhv3&6)u
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [
-    "44.226.145.213",
-"54.187.200.255",
-"34.213.214.55",
-"35.164.95.156",
-"44.230.95.183",
-"44.229.200.200",
-]
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -97,7 +90,7 @@ WSGI_APPLICATION = 'Image_gen.wsgi.application'
 DATABASES = {
     'default': dj_database_url.config(
         # Replace this value with your local database's connection string.
-        default='postgresql://postgres:postgres@localhost:5432/mysite',
+        default='postgresql://postgres:postgres@localhost:5432/Image_gen',
         conn_max_age=600
     )
 }
